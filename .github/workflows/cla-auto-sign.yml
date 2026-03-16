@@ -6,7 +6,6 @@ on:
 
 jobs:
   auto-sign:
-    # Only run on PR comments with CLA acceptance
     if: github.event.issue.pull_request && contains(github.event.comment.body, 'I have read the Contributor License Agreement and I hereby accept the terms')
     runs-on: ubuntu-latest
     permissions:
@@ -26,12 +25,10 @@ jobs:
         run: |
           if jq -e --arg user "$CONTRIBUTOR" '.contributors | index($user)' .clabot > /dev/null 2>&1; then
             echo "already_signed=true" >> $GITHUB_OUTPUT
-            echo "$CONTRIBUTOR is already in the contributors list"
           else
             jq --arg user "$CONTRIBUTOR" '.contributors += [$user]' .clabot > .clabot.tmp
             mv .clabot.tmp .clabot
             echo "already_signed=false" >> $GITHUB_OUTPUT
-            echo "Added $CONTRIBUTOR to contributors list"
           fi
 
       - name: Commit and push changes
@@ -50,11 +47,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const contributor = process.env.CONTRIBUTOR;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Thanks @${process.env.CONTRIBUTOR}! Your CLA signature has been recorded.\n\n@cla-bot check`
+              body: `Thanks @${contributor}! Your CLA signature has been recorded.\n\n@cla-bot check`
             });
         env:
           CONTRIBUTOR: ${{ github.event.comment.user.login }}
