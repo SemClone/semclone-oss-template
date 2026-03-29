@@ -2,74 +2,30 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
-  lint:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '18'
-          cache: 'npm'
+          python-version: "3.11"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Validate pyproject.toml
+        run: python -c "import tomllib; tomllib.load(open('pyproject.toml', 'rb'))"
 
-      - name: Run linter
-        run: npm run lint
-
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node-version: [16, 18, 20]
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
-
-      - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '18'
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/coverage-final.json
-          flags: unittests
-          name: codecov-umbrella
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+      - name: Check required files exist
+        run: |
+          for file in README.md LICENSE CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "All required template files present"
